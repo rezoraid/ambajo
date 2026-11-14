@@ -1,0 +1,28 @@
+services:
+  api:
+    build: .
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: postgres://scraper:scraper@postgres:5432/scraper
+      REDIS_URL: redis://redis:6379
+      TRUST_PROXY: "false"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: scraper, POSTGRES_PASSWORD: scraper, POSTGRES_DB: scraper }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U scraper"], interval: 5s, retries: 10 }
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 10 }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
